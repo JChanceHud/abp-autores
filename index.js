@@ -25,6 +25,8 @@ const { RESERVE_DAYS, RESERVE_SLOT, RESERVE_TYPE, FIRST_NAME, MIDDLE_NAME, LAST_
         console.log('Reserving...')
         await reserve(false)
         latestResDay = currentDay()
+      } else {
+        console.log('Waiting...')
       }
       // Try every 15 mins
       await new Promise(r => setTimeout(r, 15*60*1000))
