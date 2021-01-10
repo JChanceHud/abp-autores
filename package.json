@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "moment": "^2.29.1",
+    "moment-timezone": "^0.5.32",
     "puppeteer": "^5.5.0"
   },
   "devDependencies": {},

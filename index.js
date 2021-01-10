@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer')
+const moment = require('moment-timezone')
 
-const { RESERVE_SLOT, RESERVE_TYPE, FIRST_NAME, MIDDLE_NAME, LAST_NAME, BIRTH_DAY, BIRTH_MONTH, BIRTH_YEAR, EMAIL, PHONE } = process.env
+const { RESERVE_DAYS, RESERVE_SLOT, RESERVE_TYPE, FIRST_NAME, MIDDLE_NAME, LAST_NAME, BIRTH_DAY, BIRTH_MONTH, BIRTH_YEAR, EMAIL, PHONE } = process.env
 
 ;(async () => {
   if (RESERVE_TYPE !== 'climbing' && RESERVE_TYPE !== 'fitness') {
@@ -11,10 +12,23 @@ const { RESERVE_SLOT, RESERVE_TYPE, FIRST_NAME, MIDDLE_NAME, LAST_NAME, BIRTH_DA
     console.log('No RESERVE_SLOT specified')
     process.exit(1)
   }
+  if (!RESERVE_DAYS) {
+    console.log('No RESERVE_DAYS specified')
+    process.exit(1)
+  }
+  const days = RESERVE_DAYS.split(',').map(d => d.trim())
+  // don't reserve today, wait for tomorrow
+  let latestResDay = currentDay()
   try {
-    //for (;;) {
-      await reserve()
-    //}
+    for (;;) {
+      if (latestResDay !== currentDay() && days.indexOf(currentDay()) !== -1) {
+        console.log('Reserving...')
+        await reserve(false)
+        latestResDay = currentDay()
+      }
+      // Try every 15 mins
+      await new Promise(r => setTimeout(r, 15*60*1000))
+    }
   } catch (err) {
     console.log(err)
     console.log('Uncaught error')
@@ -22,8 +36,11 @@ const { RESERVE_SLOT, RESERVE_TYPE, FIRST_NAME, MIDDLE_NAME, LAST_NAME, BIRTH_DA
   }
 })()
 
+function currentDay() {
+  return moment().tz('America/Chicago').format('dddd').toLowerCase()
+}
 
-async function reserve() {
+async function reserve(dryRun = true) {
   const browser = await puppeteer.launch({
     args: [
       '--disable-web-security',
@@ -96,6 +113,11 @@ async function reserve() {
   await frame.type('#customer-email', EMAIL)
   await frame.type('#customer-phone', PHONE)
   await frame.hover('#confirm_booking_button')
+  if (dryRun) {
+    console.log('success')
+    await browser.close()
+    return
+  }
+  await frame.click('#confirm_booking_button')
   await browser.close()
-  console.log('success')
 }
