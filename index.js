@@ -25,11 +25,18 @@ const { RESERVE_SLOT, RESERVE_TYPE, FIRST_NAME, MIDDLE_NAME, LAST_NAME, BIRTH_DA
 
 async function reserve() {
   const browser = await puppeteer.launch({
-    args: ['--disable-web-security', '--disable-features=IsolateOrigins,site-per-process'],
-    headless: false,
+    args: [
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+    ],
+    executablePath: process.env.CHROME_BIN || null,
+    headless: true,
   })
   const page = await browser.newPage()
-  const url = RESERVE_TYPE === 'fitness' ? 
+  const url = RESERVE_TYPE === 'fitness' ?
     'https://austinboulderingproject.com/fitness-reservation' :
     'https://austinboulderingproject.com/climbing-reservation'
   await page.goto(url, {
@@ -69,13 +76,26 @@ async function reserve() {
   await frame.select('#participant-birth-pindex-1month', BIRTH_MONTH)
   await frame.select('#participant-birth-pindex-1day', BIRTH_DAY)
   await frame.select('#participant-birth-pindex-1year', BIRTH_YEAR)
-  await frame.select('#booking3c36493fb05b41438bd20badde4cad71', 'Yes, I/we have completed new waivers')
-  await frame.select('#booking4506848fecf941eba38f4093560b6bf0', 'Yes, I/we will abide by these new policies & standards')
-  await frame.select('#booking8b7cd72c96d341349ab69d99485f771d', 'I/we confirm the above')
+  const options = [
+    'Yes, I/we have completed new waivers',
+    'Yes, I/we will abide by these new policies & standards',
+    'I/we confirm the above',
+  ]
+  for (const option of options) {
+    const optionEl = await frame.$(`option[value="${option}"]`)
+    if (!optionEl) {
+      console.log('Unable to find option')
+      process.exit(1)
+    }
+    const select = await optionEl.getProperty('parentNode')
+    await select.select(option)
+  }
   const forward = await frame.$('.navforward')
   await forward.click()
   await frame.waitForSelector('#customer-email')
   await frame.type('#customer-email', EMAIL)
   await frame.type('#customer-phone', PHONE)
   await frame.hover('#confirm_booking_button')
+  await browser.close()
+  console.log('success')
 }
